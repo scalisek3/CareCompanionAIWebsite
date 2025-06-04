@@ -6,7 +6,9 @@ require('dotenv').config();
 const app = express();
 const port = 5000;
 
-app.use(cors());
+app.use(cors({
+  origin: 'https://carecompanionai-frontend.vercel.app'
+}));
 app.use(bodyParser.json());
 
 console.log('OPENAI_API_KEY is:', process.env.OPENAI_API_KEY); // Confirm .env loaded
