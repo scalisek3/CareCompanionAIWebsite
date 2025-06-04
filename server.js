@@ -1,49 +1,46 @@
 const express = require('express');
 const cors = require('cors');
-const bodyParser = require('body-parser');
-require('dotenv').config();
+require('dotenv').config(); // Loads .env file
+
+const { Configuration, OpenAIApi } = require('openai');
 
 const app = express();
-const port = 5000;
+const port = process.env.PORT || 5000;
 
+// Middleware
 app.use(cors({
-  origin: 'https://carecompanionai-frontend.vercel.app'
+  origin: 'https://carecompanionai-frontend.vercel.app' // Allow frontend to access backend
 }));
-app.use(express.json());
+app.use(express.json()); // Parse incoming JSON
 
-console.log('OPENAI_API_KEY is:', process.env.OPENAI_API_KEY); // Confirm .env loaded
+// Setup OpenAI configuration using API key from .env
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY
+});
+const openai = new OpenAIApi(configuration);
 
+// POST endpoint to handle chat messages
 app.post('/api/chat', async (req, res) => {
-  console.log('Received request:', req.body); // Confirm message received
   const { messages } = req.body;
+  console.log('🟡 Incoming message:', messages);
 
   try {
     const response = await openai.createChatCompletion({
-      model: 'gpt-4',
+      model: 'gpt-4', // Or 'gpt-3.5-turbo' if that's what you're using
       messages: messages
     });
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages
-      })
-    });
 
-    const data = await response.json();
-    console.log('OpenAI response:', data);
-
-    res.json(data);
+    console.log('🟢 OpenAI Response:', response.data);
+    res.json(response.data);
   } catch (error) {
-    console.error('Server error:', error);
-    res.status(500).json({ error: 'Something went wrong' });
+    console.error('🔴 OpenAI Error:', error.response?.data || error.message);
+    res.status(500).json({ error: 'Something went wrong with the assistant.' });
   }
 });
 
+// Start server
 app.listen(port, () => {
-  console.log(`✅ Server actually running on http://localhost:${port}`);
+  console.log(`✅ Server running on http://localhost:${port}`);
 });
+
 
