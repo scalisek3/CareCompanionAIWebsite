@@ -9,7 +9,7 @@ const port = 5000;
 app.use(cors({
   origin: 'https://carecompanionai-frontend.vercel.app'
 }));
-app.use(bodyParser.json());
+app.use(express.json());
 
 console.log('OPENAI_API_KEY is:', process.env.OPENAI_API_KEY); // Confirm .env loaded
 
@@ -18,7 +18,10 @@ app.post('/api/chat', async (req, res) => {
   const { messages } = req.body;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await openai.createChatCompletion({
+      model: 'gpt-4',
+      messages: messages
+    });
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
