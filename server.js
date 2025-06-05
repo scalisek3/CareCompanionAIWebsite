@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config(); // Load .env
+require('dotenv').config(); // Loads your .env
 
 const { Configuration, OpenAIApi } = require('openai');
 
@@ -9,7 +9,7 @@ const port = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-  origin: 'https://carecompanionai-frontend.vercel.app'
+  origin: 'https://carecompanionai-frontend.vercel.app' // Your Vercel frontend
 }));
 app.use(express.json());
 
@@ -19,22 +19,22 @@ const configuration = new Configuration({
 });
 const openai = new OpenAIApi(configuration);
 
-// POST endpoint
+// POST /api/chat
 app.post('/api/chat', async (req, res) => {
   const { messages } = req.body;
   console.log('🟡 Incoming messages:', messages);
 
   try {
     const response = await openai.createChatCompletion({
-      model: 'gpt-4', // Use gpt-3.5-turbo if needed
+      model: 'gpt-4', // or 'gpt-3.5-turbo' for faster responses
       messages: messages,
-      temperature: 0.7
+      temperature: 0.6
     });
 
-    console.log('🟢 OpenAI Response:', response.data);
+    console.log('🟢 OpenAI response:', response.data);
     res.json(response.data);
   } catch (error) {
-    console.error('🔴 OpenAI Error:', error.response?.data || error.message);
+    console.error('🔴 OpenAI error:', error.response?.data || error.message);
     res.status(500).json({ error: 'Something went wrong with the assistant.' });
   }
 });
@@ -43,6 +43,4 @@ app.post('/api/chat', async (req, res) => {
 app.listen(port, () => {
   console.log(`✅ Server running on http://localhost:${port}`);
 });
-
-
 
