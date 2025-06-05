@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config(); // Loads .env file
+require('dotenv').config(); // Load .env
 
 const { Configuration, OpenAIApi } = require('openai');
 
@@ -9,25 +9,26 @@ const port = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-  origin: 'https://carecompanionai-frontend.vercel.app' // Allow frontend to access backend
+  origin: 'https://carecompanionai-frontend.vercel.app'
 }));
-app.use(express.json()); // Parse incoming JSON
+app.use(express.json());
 
-// Setup OpenAI configuration using API key from .env
+// OpenAI setup
 const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY
 });
 const openai = new OpenAIApi(configuration);
 
-// POST endpoint to handle chat messages
+// POST endpoint
 app.post('/api/chat', async (req, res) => {
   const { messages } = req.body;
-  console.log('🟡 Incoming message:', messages);
+  console.log('🟡 Incoming messages:', messages);
 
   try {
     const response = await openai.createChatCompletion({
-      model: 'gpt-4', // Or 'gpt-3.5-turbo' if that's what you're using
-      messages: messages
+      model: 'gpt-4', // Use gpt-3.5-turbo if needed
+      messages: messages,
+      temperature: 0.7
     });
 
     console.log('🟢 OpenAI Response:', response.data);
@@ -42,5 +43,6 @@ app.post('/api/chat', async (req, res) => {
 app.listen(port, () => {
   console.log(`✅ Server running on http://localhost:${port}`);
 });
+
 
 
