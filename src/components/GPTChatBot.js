@@ -3,7 +3,7 @@ import axios from 'axios';
 
 const GPTChatBot = () => {
   const [messages, setMessages] = useState([
-    { role: 'system', content: 'You are a friendly healthcare assistant helping seniors.' }
+    { role: 'system', content: 'You are CareCompanionAI, a compassionate, knowledgeable healthcare assistant focused on helping seniors in the U.S. navigate Medicare, palliative care, and healthcare options in a clear, friendly, and accurate manner. Be proactive and helpful, and always refer to real U.S. healthcare practices and services, especially in California when asked.' }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
