@@ -6,7 +6,20 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
 
-app.use(cors({ origin: 'https://carecompanionai-frontend.vercel.app' }));
+app.use(cors({
+  origin: (origin, callback) => {
+    if (
+      !origin ||
+      origin.includes('vercel.app') ||
+      origin === 'http://localhost:3000'
+    ) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
+}));
+
 app.use(express.json());
 
 // ✅ Initialize OpenAI correctly
