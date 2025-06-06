@@ -28,20 +28,19 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 // ✅ Route MUST match frontend POST
 app.post('/api/chat-with-tools', async (req, res) => {
   const { messages } = req.body;
-
-  console.log('📩 Incoming chat:', messages.map(m => m.content).join(' | '));
+  console.log('💬 [Incoming] Messages:', messages.map(m => m.content).join(' | '));
 
   try {
-    const completion = await openai.chat.completions.create({
+    const response = await openai.createChatCompletion({
       model: 'gpt-4',
       messages,
       temperature: 0.5
     });
 
-    console.log('✅ GPT-4 response ready');
-    res.json(completion);
+    console.log('✅ [OpenAI Response]', response.data);
+    res.json(response.data);
   } catch (error) {
-    console.error('❌ Error from OpenAI:', error.message || error);
+    console.error('❌ [OpenAI Error]', error.response?.data || error.message);
     res.status(500).json({ error: 'Something went wrong with the assistant.' });
   }
 });
