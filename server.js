@@ -7,17 +7,10 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 app.use(cors({
-  origin: (origin, callback) => {
-    if (
-      !origin ||
-      origin.includes('vercel.app') ||
-      origin === 'http://localhost:3000'
-    ) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  }
+  origin: [
+    'https://carecompanionai-frontend.vercel.app',
+    'https://care-companion-ai-website-[your-project-id]-kathy-scalises-projects.vercel.app'
+  ]
 }));
 
 app.use(express.json());
