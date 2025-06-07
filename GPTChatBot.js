@@ -46,6 +46,7 @@ const GPTChatBot = () => {
         { messages: newMessages }
       );
 
+
       const assistantReply = response.data.choices[0].message;
       setMessages([...newMessages, assistantReply]);
     } catch (error) {
