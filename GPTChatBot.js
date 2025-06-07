@@ -42,7 +42,7 @@ const GPTChatBot = () => {
 
     try {
       const response = await axios.post(
-        'https://carecompanionai-website.onrender.com/api/chat',
+        'https://carecompanionai-website.onrender.com/api/chat-with-tools',
         { messages: newMessages }
       );
 
