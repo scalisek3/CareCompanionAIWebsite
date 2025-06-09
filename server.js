@@ -10,7 +10,8 @@ const port = process.env.PORT || 5000;
 app.use(cors({
   origin: [
     'https://carecompanionai-frontend.vercel.app',
-    'https://care-companion-ai-website.vercel.app' // ✅ Replace with exact deployed frontend URL if different
+    'https://carecompanionai-frontend-73l9n0gwa-kathy-scalises-projects.vercel.app',
+    'https://care-companion-ai-website-kathy-scalises-projects.vercel.app'
   ]
 }));
 
