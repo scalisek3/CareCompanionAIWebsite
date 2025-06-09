@@ -1,56 +1,46 @@
 const express = require('express');
 const cors = require('cors');
-const bodyParser = require('body-parser');
-require("dotenv").config();
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-
-const fetch = require('node-fetch'); // Required unless using native fetch in newer Node
+const { OpenAI } = require('openai');
+require('dotenv').config();
 
 const app = express();
 const port = process.env.PORT || 5000;
 
-// ✅ CORS middleware (allow any origin — or specify your GoDaddy frontend domain for security)
+// 🔐 CORS setup – add all trusted frontend origins
 app.use(cors({
-  origin: '*', // e.g., 'https://yourdomain.com'
-  methods: ['GET', 'POST'],
+  origin: [
+    'https://carecompanionai-frontend.vercel.app',
+    'https://care-companion-ai-website.vercel.app' // ✅ Replace with exact deployed frontend URL if different
+  ]
 }));
 
-// ✅ Middleware to parse JSON bodies
-app.use(bodyParser.json());
+app.use(express.json());
 
-// ✅ Confirm .env is loaded
-console.log('OPENAI_API_KEY is:', process.env.OPENAI_API_KEY);
+// ✅ Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
 
-// ✅ POST /api/chat route
-app.post('/api/chat', async (req, res) => {
-  console.log('Received request:', req.body); // Debug logging
+// ✅ POST route must match frontend
+app.post('/api/chat-with-tools', async (req, res) => {
   const { messages } = req.body;
+  console.log('💬 Received messages:', messages.map(m => m.content).join(' | '));
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages,
-      }),
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages,
+      temperature: 0.5
     });
 
-    const data = await response.json();
-    console.log('OpenAI response:', data);
-
-    res.json(data);
+    console.log('✅ OpenAI replied:', response.choices[0].message);
+    res.json(response);
   } catch (error) {
-    console.error('Server error:', error);
-    res.status(500).json({ error: 'Something went wrong' });
+    console.error('❌ OpenAI error:', error.response?.data || error.message);
+    res.status(500).json({ error: 'Something went wrong with the assistant.' });
   }
 });
 
-// ✅ Start the server
 app.listen(port, () => {
-  console.log(`✅ Server running at http://localhost:${port}`);
+  console.log(`✅ Server is running on port ${port}`);
 });
-
