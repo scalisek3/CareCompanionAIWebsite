@@ -6,13 +6,24 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
 
-// 🔐 CORS setup – add all trusted frontend origins
+// ✅ Add all trusted frontend origins here
+const allowedOrigins = [
+  'https://carecompanionai-frontend.vercel.app',
+  'https://carecompanionai-frontend-73l9n0gwa-kathy-scalises-projects.vercel.app',
+  'https://carecompanionai-frontend-fkxzdzexn-kathy-scalises-projects.vercel.app',
+  'https://care-companion-ai-website-kathy-scalises-projects.vercel.app',
+  'http://localhost:3000'
+];
+
+// ✅ Dynamic CORS configuration
 app.use(cors({
-  origin: [
-    'https://carecompanionai-frontend.vercel.app',
-    'https://carecompanionai-frontend-73l9n0gwa-kathy-scalises-projects.vercel.app',
-    'https://care-companion-ai-website-kathy-scalises-projects.vercel.app'
-  ]
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS policy: This origin is not allowed'));
+    }
+  }
 }));
 
 app.use(express.json());
