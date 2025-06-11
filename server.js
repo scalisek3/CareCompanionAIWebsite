@@ -9,13 +9,11 @@ const port = process.env.PORT || 5000;
 // ✅ Add all trusted frontend origins here
 const allowedOrigins = [
   'https://carecompanionai-frontend.vercel.app',
-  'https://carecompanionai-frontend-73l9n0gwa-kathy-scalises-projects.vercel.app',
-  'https://carecompanionai-frontend-fkxzdzexn-kathy-scalises-projects.vercel.app',
-  'https://carecompanionai-frontend-6z6m5aygx-kathy-scalises-projects.vercel.app',
-  'https://carecompanionai-frontend-frq1nz5eg-kathy-scalises-projects.vercel.app',
   'https://carecompanionai-frontend-kswrgvtj0-kathy-scalises-projects.vercel.app',
   'https://carecompanionai-frontend-rg9w61dmw-kathy-scalises-projects.vercel.app',
   'https://carecompanionai-frontend-4imiriwyq-kathy-scalises-projects.vercel.app',
+  'https://care-companion-ai-website-fwf0ztvl7-kathy-scalises-projects.vercel.app',
+  'https://carecompanionai-website.onrender.com/api/chat-with-tools',
   'https://care-companion-ai-website-kathy-scalises-projects.vercel.app',
   'http://localhost:3000'
 ];
