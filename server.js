@@ -6,19 +6,15 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
 
-// ✅ Add all trusted frontend origins here
+// ✅ CORS – only frontend origins
 const allowedOrigins = [
   'https://carecompanionai-frontend.vercel.app',
   'https://carecompanionai-frontend-kswrgvtj0-kathy-scalises-projects.vercel.app',
   'https://carecompanionai-frontend-rg9w61dmw-kathy-scalises-projects.vercel.app',
-  'https://carecompanionai-frontend-4imiriwyq-kathy-scalises-projects.vercel.app',
-  'https://care-companion-ai-website-fwf0ztvl7-kathy-scalises-projects.vercel.app',
-  'https://carecompanionai-website.onrender.com/api/chat-with-tools',
   'https://care-companion-ai-website-kathy-scalises-projects.vercel.app',
   'http://localhost:3000'
 ];
 
-// ✅ Dynamic CORS configuration
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
@@ -31,12 +27,12 @@ app.use(cors({
 
 app.use(express.json());
 
-// ✅ Initialize OpenAI client
+// ✅ OpenAI config
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-// ✅ POST route must match frontend
+// ✅ API route
 app.post('/api/chat-with-tools', async (req, res) => {
   const { messages } = req.body;
   console.log('💬 Received messages:', messages.map(m => m.content).join(' | '));
@@ -51,7 +47,11 @@ app.post('/api/chat-with-tools', async (req, res) => {
     console.log('✅ OpenAI replied:', response.choices[0].message);
     res.json(response);
   } catch (error) {
-    console.error('❌ OpenAI error:', error.response?.data || error.message);
+    if (error.response) {
+      console.error('❌ OpenAI error:', error.response.status, error.response.data);
+    } else {
+      console.error('❌ Unknown error:', error.message);
+    }
     res.status(500).json({ error: 'Something went wrong with the assistant.' });
   }
 });
