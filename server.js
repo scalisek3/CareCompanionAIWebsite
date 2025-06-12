@@ -11,6 +11,7 @@ const allowedOrigins = [
   'https://carecompanionai-frontend.vercel.app',
   'https://carecompanionai-frontend-kswrgvtj0-kathy-scalises-projects.vercel.app',
   'https://carecompanionai-frontend-rg9w61dmw-kathy-scalises-projects.vercel.app',
+  'https://carecompanionai-frontend-git-main-kathy-scalises-projects.vercel.app',
   'https://care-companion-ai-website-kathy-scalises-projects.vercel.app',
   'http://localhost:3000'
 ];
