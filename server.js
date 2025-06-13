@@ -33,6 +33,23 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
+app.get('/api/providers', (req, res) => {
+  const { city, state } = req.query;
+  const providers = [
+    { name: "Dr. Alice Thompson", specialty: "Primary Care", city: "Temecula", state: "CA", medicare: true },
+    { name: "Dr. Bob Nguyen", specialty: "Cardiology", city: "Sacramento", state: "CA", medicare: true },
+    { name: "Dr. Carla Lopez", specialty: "Geriatrics", city: "Temecula", state: "CA", medicare: true }
+  ];
+
+  const filtered = providers.filter(p =>
+    p.city.toLowerCase() === city?.toLowerCase() &&
+    p.state.toLowerCase() === state?.toLowerCase()
+  );
+
+  res.json({ results: filtered });
+});
+
+
 // ✅ API route
 app.post('/api/chat-with-tools', async (req, res) => {
   const { messages } = req.body;
