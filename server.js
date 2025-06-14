@@ -57,7 +57,7 @@ app.post('/api/chat-with-tools', async (req, res) => {
 
   try {
     const response = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-3.5-turbo',
       messages,
       temperature: 0.5
     });
