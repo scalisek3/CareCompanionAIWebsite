@@ -66,6 +66,10 @@ app.post('/api/chat-with-tools', async (req, res) => {
       model: 'gpt-3.5-turbo',
       messages,
       temperature: 0.5,
+ max_tokens: 800, // Reduce token count for faster reply
+  top_p: 0.9,
+  frequency_penalty: 0,
+  presence_penalty: 0,
       functions: [
         {
           name: 'find_medicare_providers',
