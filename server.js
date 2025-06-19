@@ -13,6 +13,9 @@ const allowedOrigins = [
   'https://carecompanionai-frontend-kswrgvtj0-kathy-scalises-projects.vercel.app',
   'https://carecompanionai-frontend-rg9w61dmw-kathy-scalises-projects.vercel.app',
   'https://carecompanionai-frontend-git-main-kathy-scalises-projects.vercel.app',
+  'care-companion-ai-website.vercel.app',
+  'https://carecompanionai-website.onrender.com/api/chat-with-tools',
+  'https://care-companion-ai-website.vercel.app',
   'https://care-companion-ai-website-kathy-scalises-projects.vercel.app',
   'https://care-companion-ai-website-7j79-git-main-kathy-scalises-projects.vercel.app',
   'http://localhost:3000'
