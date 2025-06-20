@@ -6,6 +6,19 @@ require('dotenv').config();
 
 const app = express();
 const port = process.env.PORT || 5000;
+const getAccessToken = require('./getToken');
+
+app.get('/api/coverage-check', async (req, res) => {
+  try {
+    const token = await getAccessToken();
+    res.json({ token }); // return token for now
+  } catch (err) {
+    console.error('Token fetch error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch token' });
+  }
+});
+
+
 
 // ✅ Trusted frontends
 const allowedOrigins = [
