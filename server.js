@@ -51,9 +51,14 @@ app.post('/api/coverage-check', async (req, res) => {
     );
     res.json(response.data);
   } catch (error) {
-    console.error('❌ Coverage check failed:', error.response?.data || error.message);
-    res.status(500).json({ error: 'Coverage check failed' });
-  }
+  console.error('❌ Coverage check failed:', {
+    message: error.message,
+    stack: error.stack,
+    response: error.response?.data,
+    status: error.response?.status
+  });
+  res.status(500).json({ error: 'Coverage check failed', details: error.message });
+}
 });
 
 // ✅ Availity token test route (optional for testing)
