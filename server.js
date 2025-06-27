@@ -13,6 +13,8 @@ const allowedOrigins = [
   'https://carecompanionai-frontend.vercel.app',
   'https://care-companion-ai-website.vercel.app',
   'https://carecompanionai-website.onrender.com',
+  'https://carecompanionai-frontend.vercel.app/api/chat-with-tools',
+  'https://carecompanionai-frontend.vercel.app', 
   'http://localhost:3000'
 ];
 
