@@ -8,21 +8,18 @@ const getAccessToken = require('./getToken');
 const app = express();
 const port = process.env.PORT || 5000;
 
-// ✅ CORS: allow frontend origins
-const allowedOrigins = [
-  'https://carecompanionai-frontend.vercel.app',
-  'https://care-companion-ai-website.vercel.app',
-  'https://carecompanionai-website.onrender.com',
-  'https://carecompanionai-frontend.vercel.app/api/chat-with-tools',
-  'https://carecompanionai-frontend.vercel.app', 
-  'http://localhost:3000'
-];
-
+// ✅ Smart CORS: allow all .vercel.app and localhost origins
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (
+      !origin ||
+      origin.includes('localhost') ||
+      origin.endsWith('.vercel.app') ||
+      origin === 'https://carecompanionai-website.onrender.com'
+    ) {
       callback(null, true);
     } else {
+      console.error(`❌ Blocked by CORS: ${origin}`);
       callback(new Error('CORS policy: Origin not allowed'));
     }
   }
@@ -30,7 +27,7 @@ app.use(cors({
 
 app.use(express.json());
 
-// ✅ OpenAI setup
+// ✅ OpenAI Chat Completion
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 app.post('/api/chat-with-tools', async (req, res) => {
@@ -43,12 +40,12 @@ app.post('/api/chat-with-tools', async (req, res) => {
     });
     res.json(response);
   } catch (error) {
-    console.error('❌ OpenAI error:', error.response?.status, error.response?.data || error.message);
+    console.error('❌ OpenAI error:', error.response?.data || error.message);
     res.status(500).json({ error: 'Assistant error' });
   }
 });
 
-// ✅ Medicare Provider Lookup (CMS)
+// ✅ CMS Medicare Provider Lookup
 app.get('/api/medicare-providers', async (req, res) => {
   const { city, state, keyword = '' } = req.query;
   if (!city || !state) return res.status(400).json({ error: 'City and state required' });
@@ -62,7 +59,10 @@ app.get('/api/medicare-providers', async (req, res) => {
       address: `${p.addresses?.[0]?.address_1 || ''}, ${p.addresses?.[0]?.city || ''}, ${p.addresses?.[0]?.state || ''}`.trim()
     })) || [];
 
-    const filtered = keyword ? providers.filter(p => p.specialty.toLowerCase().includes(keyword.toLowerCase())) : providers;
+    const filtered = keyword
+      ? providers.filter(p => p.specialty.toLowerCase().includes(keyword.toLowerCase()))
+      : providers;
+
     res.json({ providers: filtered });
   } catch (err) {
     console.error('❌ CMS provider lookup error:', err.message);
@@ -70,14 +70,24 @@ app.get('/api/medicare-providers', async (req, res) => {
   }
 });
 
-// ✅ MedlinePlus Connect (health term definition)
+// ✅ MedlinePlus – Health Topic Lookup
 app.get('/api/medline', async (req, res) => {
   const { q } = req.query;
   if (!q) return res.status(400).json({ error: 'Query required' });
 
   try {
-    const response = await axios.get(`https://connect.medlineplus.gov/application?mainSearchCriteria.v.c=${encodeURIComponent(q)}&mainSearchCriteria.v.cs=2.16.840.1.113883.6.96&informationRecipient.languageCode.c=en&knowledgeResponseType=application/json`);
-    const summary = response.data.feed?.entry?.[0]?.summary || '';
+    const response = await axios.get(
+      `https://connect.medlineplus.gov/application`,
+      {
+        params: {
+          'mainSearchCriteria.v.c': q,
+          'mainSearchCriteria.v.cs': '2.16.840.1.113883.6.96',
+          'informationRecipient.languageCode.c': 'en',
+          knowledgeResponseType: 'application/json'
+        }
+      }
+    );
+    const summary = response.data.feed?.entry?.[0]?.summary || 'No summary available.';
     res.json({ summary });
   } catch (err) {
     console.error('❌ MedlinePlus error:', err.message);
@@ -85,13 +95,18 @@ app.get('/api/medline', async (req, res) => {
   }
 });
 
-// ✅ OpenFDA drug information
+// ✅ OpenFDA – Drug Information
 app.get('/api/openfda', async (req, res) => {
   const { q } = req.query;
   if (!q) return res.status(400).json({ error: 'Query required' });
 
   try {
-    const response = await axios.get(`https://api.fda.gov/drug/label.json?search=openfda.brand_name:${encodeURIComponent(q)}&limit=3`);
+    const response = await axios.get(`https://api.fda.gov/drug/label.json`, {
+      params: {
+        search: `openfda.brand_name:${q}`,
+        limit: 3
+      }
+    });
     res.json({ results: response.data.results });
   } catch (err) {
     console.error('❌ OpenFDA error:', err.message);
@@ -105,11 +120,21 @@ app.get('/api/clinicaltrials', async (req, res) => {
   if (!q) return res.status(400).json({ error: 'Query required' });
 
   try {
-    const response = await axios.get(`https://clinicaltrials.gov/api/query/study_fields?expr=${encodeURIComponent(q)}&fields=NCTId,BriefTitle,Condition,LocationCountry&min_rnk=1&max_rnk=3&fmt=json`);
+    const response = await axios.get(`https://clinicaltrials.gov/api/query/study_fields`, {
+      params: {
+        expr: q,
+        fields: 'NCTId,BriefTitle,Condition,LocationCountry',
+        min_rnk: 1,
+        max_rnk: 3,
+        fmt: 'json'
+      }
+    });
+
     const trials = response.data.StudyFieldsResponse.StudyFields.map(t => ({
       title: t.BriefTitle[0],
       url: `https://clinicaltrials.gov/ct2/show/${t.NCTId[0]}`
     }));
+
     res.json(trials);
   } catch (err) {
     console.error('❌ ClinicalTrials.gov error:', err.message);
@@ -117,7 +142,7 @@ app.get('/api/clinicaltrials', async (req, res) => {
   }
 });
 
-// ✅ Availity coverage check (if token is working)
+// ✅ Availity Coverage Check
 app.post('/api/coverage-check', async (req, res) => {
   const payload = req.body;
   try {
@@ -140,7 +165,7 @@ app.post('/api/coverage-check', async (req, res) => {
   }
 });
 
-// ✅ Start server
+// ✅ Start the server
 app.listen(port, () => {
   console.log(`✅ CareCompanionAI backend running on port ${port}`);
 });
