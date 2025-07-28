@@ -8,7 +8,7 @@ const getAccessToken = require('./getToken');
 const app = express();
 const port = process.env.PORT || 5000;
 
-// ✅ Smart CORS: allow all .vercel.app and localhost origins
+// ✅ CORS
 app.use(cors({
   origin: function (origin, callback) {
     if (
@@ -27,122 +27,173 @@ app.use(cors({
 
 app.use(express.json());
 
-// ✅ OpenAI Chat Completion
+// ✅ OpenAI setup
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// ========= Chat with Tools =========
 app.post('/api/chat-with-tools', async (req, res) => {
   const { messages } = req.body;
   try {
+    // Ask GPT + allow tool calling
     const response = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages,
-      temperature: 0.5
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "getMedicareProviders",
+            description: "Lookup Medicare providers by city, state, and optional keyword",
+            parameters: {
+              type: "object",
+              properties: {
+                city: { type: "string" },
+                state: { type: "string" },
+                keyword: { type: "string" }
+              },
+              required: ["city", "state"]
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "getMedlineSummary",
+            description: "Get health topic summary from MedlinePlus",
+            parameters: {
+              type: "object",
+              properties: { q: { type: "string" } },
+              required: ["q"]
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "getOpenFDA",
+            description: "Get drug label information from OpenFDA",
+            parameters: {
+              type: "object",
+              properties: { q: { type: "string" } },
+              required: ["q"]
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "getClinicalTrials",
+            description: "Find clinical trials by keyword",
+            parameters: {
+              type: "object",
+              properties: { q: { type: "string" } },
+              required: ["q"]
+            }
+          }
+        }
+      ]
     });
+
+    const message = response.choices[0].message;
+
+    // If GPT called a function, handle it
+    if (message.tool_calls && message.tool_calls.length > 0) {
+      const tool = message.tool_calls[0];
+      const args = JSON.parse(tool.function.arguments);
+
+      let toolResponse = null;
+
+      try {
+        switch (tool.function.name) {
+          case "getMedicareProviders":
+            toolResponse = await getMedicareProviders(args.city, args.state, args.keyword || '');
+            break;
+          case "getMedlineSummary":
+            toolResponse = await getMedlineSummary(args.q);
+            break;
+          case "getOpenFDA":
+            toolResponse = await getOpenFDA(args.q);
+            break;
+          case "getClinicalTrials":
+            toolResponse = await getClinicalTrials(args.q);
+            break;
+        }
+      } catch (toolError) {
+        console.error(`❌ Tool execution error:`, toolError.message);
+        return res.status(500).json({ error: `Tool execution failed: ${toolError.message}` });
+      }
+
+      // Respond with the tool result
+      return res.json({
+        tool: tool.function.name,
+        result: toolResponse
+      });
+    }
+
+    // If no function was called, return GPT text
     res.json(response);
+
   } catch (error) {
     console.error('❌ OpenAI error:', error.response?.data || error.message);
-    res.status(500).json({ error: 'Assistant error' });
+    res.status(500).json({ error: error.message });
   }
 });
 
-// ✅ CMS Medicare Provider Lookup
-app.get('/api/medicare-providers', async (req, res) => {
-  const { city, state, keyword = '' } = req.query;
-  if (!city || !state) return res.status(400).json({ error: 'City and state required' });
+// ========= Helper Functions =========
 
-  try {
-    const response = await axios.get(`https://npiregistry.cms.hhs.gov/api/?version=2.1&city=${city}&state=${state}&limit=10`);
-    const providers = response.data.results?.map(p => ({
-      name: p.basic?.organization_name || `${p.basic?.first_name || ''} ${p.basic?.last_name || ''}`.trim(),
-      specialty: p.taxonomies?.[0]?.desc || 'Unknown',
-      phone: p.addresses?.[0]?.telephone_number || 'N/A',
-      address: `${p.addresses?.[0]?.address_1 || ''}, ${p.addresses?.[0]?.city || ''}, ${p.addresses?.[0]?.state || ''}`.trim()
-    })) || [];
+async function getMedicareProviders(city, state, keyword) {
+  const response = await axios.get(`https://npiregistry.cms.hhs.gov/api/`, {
+    params: { version: 2.1, city, state, limit: 10 }
+  });
 
-    const filtered = keyword
-      ? providers.filter(p => p.specialty.toLowerCase().includes(keyword.toLowerCase()))
-      : providers;
+  const providers = response.data.results?.map(p => ({
+    name: p.basic?.organization_name || `${p.basic?.first_name || ''} ${p.basic?.last_name || ''}`.trim(),
+    specialty: p.taxonomies?.[0]?.desc || 'Unknown',
+    phone: p.addresses?.[0]?.telephone_number || 'N/A',
+    address: `${p.addresses?.[0]?.address_1 || ''}, ${p.addresses?.[0]?.city || ''}, ${p.addresses?.[0]?.state || ''}`.trim()
+  })) || [];
 
-    res.json({ providers: filtered });
-  } catch (err) {
-    console.error('❌ CMS provider lookup error:', err.message);
-    res.status(500).json({ error: 'CMS provider lookup failed' });
-  }
-});
+  return keyword
+    ? providers.filter(p => p.specialty.toLowerCase().includes(keyword.toLowerCase()))
+    : providers;
+}
 
-// ✅ MedlinePlus – Health Topic Lookup
-app.get('/api/medline', async (req, res) => {
-  const { q } = req.query;
-  if (!q) return res.status(400).json({ error: 'Query required' });
+async function getMedlineSummary(q) {
+  const response = await axios.get(`https://connect.medlineplus.gov/application`, {
+    params: {
+      'mainSearchCriteria.v.c': q,
+      'mainSearchCriteria.v.cs': '2.16.840.1.113883.6.96',
+      'informationRecipient.languageCode.c': 'en',
+      knowledgeResponseType: 'application/json'
+    }
+  });
+  return response.data.feed?.entry?.[0]?.summary || 'No summary available.';
+}
 
-  try {
-    const response = await axios.get(
-      `https://connect.medlineplus.gov/application`,
-      {
-        params: {
-          'mainSearchCriteria.v.c': q,
-          'mainSearchCriteria.v.cs': '2.16.840.1.113883.6.96',
-          'informationRecipient.languageCode.c': 'en',
-          knowledgeResponseType: 'application/json'
-        }
-      }
-    );
-    const summary = response.data.feed?.entry?.[0]?.summary || 'No summary available.';
-    res.json({ summary });
-  } catch (err) {
-    console.error('❌ MedlinePlus error:', err.message);
-    res.status(500).json({ error: 'MedlinePlus lookup failed' });
-  }
-});
+async function getOpenFDA(q) {
+  const response = await axios.get(`https://api.fda.gov/drug/label.json`, {
+    params: { search: `openfda.brand_name:${q}`, limit: 3 }
+  });
+  return response.data.results;
+}
 
-// ✅ OpenFDA – Drug Information
-app.get('/api/openfda', async (req, res) => {
-  const { q } = req.query;
-  if (!q) return res.status(400).json({ error: 'Query required' });
+async function getClinicalTrials(q) {
+  const response = await axios.get(`https://clinicaltrials.gov/api/query/study_fields`, {
+    params: {
+      expr: q,
+      fields: 'NCTId,BriefTitle,Condition,LocationCountry',
+      min_rnk: 1,
+      max_rnk: 3,
+      fmt: 'json'
+    }
+  });
+  return response.data.StudyFieldsResponse.StudyFields.map(t => ({
+    title: t.BriefTitle[0],
+    url: `https://clinicaltrials.gov/ct2/show/${t.NCTId[0]}`
+  }));
+}
 
-  try {
-    const response = await axios.get(`https://api.fda.gov/drug/label.json`, {
-      params: {
-        search: `openfda.brand_name:${q}`,
-        limit: 3
-      }
-    });
-    res.json({ results: response.data.results });
-  } catch (err) {
-    console.error('❌ OpenFDA error:', err.message);
-    res.status(500).json({ error: 'OpenFDA lookup failed' });
-  }
-});
-
-// ✅ ClinicalTrials.gov
-app.get('/api/clinicaltrials', async (req, res) => {
-  const { q } = req.query;
-  if (!q) return res.status(400).json({ error: 'Query required' });
-
-  try {
-    const response = await axios.get(`https://clinicaltrials.gov/api/query/study_fields`, {
-      params: {
-        expr: q,
-        fields: 'NCTId,BriefTitle,Condition,LocationCountry',
-        min_rnk: 1,
-        max_rnk: 3,
-        fmt: 'json'
-      }
-    });
-
-    const trials = response.data.StudyFieldsResponse.StudyFields.map(t => ({
-      title: t.BriefTitle[0],
-      url: `https://clinicaltrials.gov/ct2/show/${t.NCTId[0]}`
-    }));
-
-    res.json(trials);
-  } catch (err) {
-    console.error('❌ ClinicalTrials.gov error:', err.message);
-    res.status(500).json({ error: 'Clinical trials lookup failed' });
-  }
-});
-
-// ✅ Availity Coverage Check
+// ========= Availity Coverage Check =========
 app.post('/api/coverage-check', async (req, res) => {
   const payload = req.body;
   try {
@@ -165,8 +216,6 @@ app.post('/api/coverage-check', async (req, res) => {
   }
 });
 
-// ✅ Start the server
 app.listen(port, () => {
   console.log(`✅ CareCompanionAI backend running on port ${port}`);
 });
-
