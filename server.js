@@ -33,11 +33,32 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 // ========= Chat with Tools =========
 app.post('/api/chat-with-tools', async (req, res) => {
   const { messages } = req.body;
+
+  // System prompt enforced here
+  const systemMessage = {
+    role: 'system',
+    content: `You are CareCompanionAI, an advanced healthcare assistant.
+You have access to the following real-time tools:
+1) Medicare Provider Lookup (for doctors, hospice, nursing homes)
+2) MedlinePlus (for health topic definitions)
+3) OpenFDA (for drug & device information)
+4) ClinicalTrials.gov (for active clinical trials).
+
+Always use these tools whenever possible before answering.
+Return clear, complete results (including names, addresses, phone numbers, URLs).
+If a tool fails, gracefully let the user know and suggest alternatives.
+Do not guess or make up information.`
+  };
+
+  // Insert system prompt only if not already present
+  const updatedMessages = messages[0]?.role === 'system'
+    ? messages
+    : [systemMessage, ...messages];
+
   try {
-    // Ask GPT + allow tool calling
     const response = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
-      messages,
+      messages: updatedMessages,
       tools: [
         {
           type: "function",
